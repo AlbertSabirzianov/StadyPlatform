@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from api.serializers import LessonSerializer, ProductStatisticSerializer
 from products.models import Lesson, Product
-from .utils import SAFE_ACTIONS
+from .permissions import IsAvailableProduct
 
 """
 1 - '/api/lessons/'
@@ -36,24 +36,12 @@ class ProductViewSet(ReadOnlyModelViewSet):
 
     permission_classes = [IsAuthenticated]
     serializer_class = ProductStatisticSerializer
+    queryset = Product.objects.all()
 
-    def get_queryset(self):
-        """
-        Выбираем все продукты, если нужна статистика,
-        Выбираем продукты, которые доступны пользователю,
-        если нужно получить информацию по урокам.
-        """
-
-        if self.action in SAFE_ACTIONS:
-            return Product.objects.all()
-
-        queryset = Product.objects.filter(
-            availability__user=self.request.user,
-            availability__is_available=True
-        )
-        return queryset
-
-    @action(detail=True)
+    @action(
+        detail=True,
+        permission_classes=[IsAuthenticated, IsAvailableProduct]
+    )
     def lessons(self, *args, **kwargs):
         product = self.get_object()
         serializer = LessonSerializer(
